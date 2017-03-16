@@ -12,7 +12,7 @@
 @import 'normalize.css';
 
 /* Main Body */
-/*@import 'globals/body';*/
+@import 'global/body';
 
 /* Optional Modules (not included in Basscss by default) */
 /*

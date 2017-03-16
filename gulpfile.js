@@ -6,6 +6,7 @@ require('es6-promise').polyfill();
 var gulp    = require('gulp'),
 fs          = require('fs'),
 concat      = require('gulp-concat'),
+babel       = require('gulp-babel'),
 uglify      = require('gulp-uglify'),
 svgmin      = require('gulp-svgmin'),
 imagemin    = require('gulp-imagemin'),
@@ -59,9 +60,17 @@ var htmlPath          = themeDest + '/**/*.html';
 // Copy bower files into our assets
 gulp.task('copy', function() {
   gulp.src([
-    /* add bower src files here if you include a bower.json */
+    './node_modules/processing-js/processing.js'
   ])
-  .pipe(gulp.dest(devBase + '/js/_lib/'));
+  .pipe(gulp.dest(themeBase + '/js/_lib/'));
+});
+
+gulp.task('copy-processes', function() {
+  gulp.src([
+    './src/processes/*.pde'
+  ])
+  .pipe(gulp.dest(themeDest + '/processes/'))
+  .pipe(config.production ? utility.noop() : notify({ message: 'Processes copied' }));
 });
 
 // Compile, prefix, minify and move our SCSS files
@@ -85,26 +94,27 @@ gulp.task('stylesheets', function () {
   ];
   return gulp.src(stylePathSrc)
     .pipe(plumber())
-    .pipe( sourcemaps.init() )
+    .pipe(sourcemaps.init())
     .pipe(postcss(processors))
-    .pipe( sourcemaps.write('.') )
+    .pipe(sourcemaps.write('.'))
     .pipe(gulp.dest(stylePathDest))
     .pipe(config.production ? utility.noop() : browserSync.stream({match: '**/.css'}))
     .pipe(config.production ? utility.noop() : notify({ message: 'Styles task complete' }));
 });
 
 // Compile (in order), concatenate, minify, rename and move our JS files
-gulp.task('scripts', function() {
+gulp.task('scripts', ['copy'], function() {
   return streamqueue({ objectMode: true },
     gulp.src(themeBase + '/js/_lib/**/*.js'),
     gulp.src(themeBase + '/js/app.js')
   )
   .pipe(plumber())
-  .pipe( sourcemaps.init() )
+  .pipe(sourcemaps.init())
   .pipe(babel())
   .pipe(concat('app.js', {newLine: ';'}))
   .pipe(uglify())
-  .pipe( sourcemaps.write('.') )
+  .pipe(sourcemaps.write('.'))
+  .pipe(gulp.dest(scriptsPathDest))
   .pipe(config.production ? utility.noop() : browserSync.stream())
   .pipe(config.production ? utility.noop() : notify({ message: 'Scripts task complete' }));
 });
@@ -174,6 +184,7 @@ gulp.task('serve', ['stylesheets', 'scripts', 'html'], function() {
 
     gulp.watch(stylePathWatch, ['stylesheets']);
     gulp.watch(scriptsPathWatch, ['scripts']);
+    gulp.watch('./src/processes/*.pde', ['copy-processes']);
     gulp.watch(['./src/{layouts,partials,helpers,data,pages}/**/*'], ['html-refresh', 'html']);
 });
 
@@ -188,6 +199,7 @@ gulp.task('watch-images', function() {
 /*==========================================
 =            Run the Gulp Tasks            =
 ==========================================*/
+gulp.task('copy-files', ['copy', 'copy-processes']);
 gulp.task('default', ['stylesheets', 'scripts', 'html', 'svgs', 'watch-images', 'serve']);
 gulp.task('build', ['stylesheets', 'scripts', 'html']);
 gulp.task('images', ['img-opt']);
